@@ -16,6 +16,7 @@ jobs:
       - docs-build
       - docs-build-matrix
       - publish-api-docs
+      - burndown-policy
     uses: rapidsai/shared-workflows/.github/workflows/pr-builder.yaml@main
     if: always()
     with:
@@ -32,6 +33,8 @@ jobs:
     permissions:
       contents: read
   docs-build-matrix:
+    needs: [burndown-policy]
+    if: ${{ needs.burndown-policy.result == 'success' && needs.burndown-policy.outputs.skip-product-ci != 'true' }}
     permissions:
       contents: read
     uses: rapidsai/shared-workflows/.github/workflows/compute-matrix.yaml@main
@@ -40,7 +43,8 @@ jobs:
       matrix_name: docs-build
       matrix_type: pull-request
   docs-build:
-    needs: [docs-build-matrix, checks]
+    if: ${{ needs.burndown-policy.result == 'success' && needs.burndown-policy.outputs.skip-product-ci != 'true' }}
+    needs: [docs-build-matrix, checks, burndown-policy]
     secrets: inherit # zizmor: ignore[secrets-inherit]
     uses: rapidsai/shared-workflows/.github/workflows/custom-job.yaml@main
     strategy:
@@ -59,7 +63,8 @@ jobs:
       packages: read
       pull-requests: read
   publish-api-docs:
-    needs: [docs-build]
+    if: ${{ needs.burndown-policy.result == 'success' && needs.burndown-policy.outputs.skip-product-ci != 'true' }}
+    needs: [docs-build, burndown-policy]
     permissions:
       contents: read
       id-token: write
@@ -79,3 +84,8 @@ jobs:
     with:
       docs-projects: cugraph
       dry-run: true
+  burndown-policy:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: rapidsai/shared-workflows/.github/workflows/burndown-policy.yaml@main # zizmor: ignore[unpinned-uses]
